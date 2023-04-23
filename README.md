@@ -17,26 +17,7 @@ objects.
 I do not allow reproduction nor usage without explicit written agreement
 from me directly.
 
-## Develop
-
-In order to develop, we recommend spawning the Docker image in
-interactive mode:
-
-```
-make devenv
-```
-
-You can then benefit from the local repository inside the Docker image,
-in an environment that contains C++ compiler. For example, to run a
-light-build of the file you are currently working on:
-
-```
-make lbuild
-```
-
-We do not believe warnings should be ignored, so we apply a strict
-warning=error policy. If you think it is a mistake, rethink. If you
-still think it is a mistake, well... rethink again.
+# Setting up the project
 
 ## Tooling
 
