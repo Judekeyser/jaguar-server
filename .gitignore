@@ -1,5 +1,4 @@
 .idea
-pyenv
 
 **/*.out
-documentation/build
+tooling/documentation/build

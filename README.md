@@ -17,21 +17,63 @@ objects.
 I do not allow reproduction nor usage without explicit written agreement
 from me directly.
 
-## Set-up
+## Develop
 
-Please make a Python environment and run the requirements file.
-Currently supported version of Python is Python 3.9.
+In order to develop, we recommend spawning the Docker image in
+interactive mode:
 
 ```
-python3.9 -m venv pyenv
-pip install requirements.txt
+make devenv
 ```
 
-Using `pyenv` as environment name, makes sure your environment
-stored in the repository, is git-ignored.
+You can then benefit from the local repository inside the Docker image,
+in an environment that contains C++ compiler. For example, to run a
+light-build of the file you are currently working on:
 
-Create the Docker image for development process:
 ```
-docker build -t jaguar .
+make lbuild
 ```
 
+We do not believe warnings should be ignored, so we apply a strict
+warning=error policy. If you think it is a mistake, rethink. If you
+still think it is a mistake, well... rethink again.
+
+## Tooling
+
+We believe documentation and tests are of primary importance.
+The documentation is currently handled as a Sphinx process. This
+requires a Python environment.
+
+From tooling, build the Docker image:
+```
+docker build -t jaguar-tooling .
+```
+
+You activate the tooling environment by running
+```
+make toolenv
+```
+
+### Generate documentation
+
+Generate the documentation from the source (once the tooling environment
+activated, see above):
+
+```
+make doc
+```
+
+## Develop 
+
+In order to develop, first create a Docker image for development purpose.
+From within the `/develop` folder, run:
+
+```
+docker build -t jaguar-develop .
+```
+
+You activate the development environment by running:
+
+```
+make devenv
+```

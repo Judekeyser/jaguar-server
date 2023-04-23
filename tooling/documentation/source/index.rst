@@ -1,5 +1,5 @@
 .. Jaguar Server documentation master file, created by
-   sphinx-quickstart on Sun Apr 23 13:27:25 2023.
+   sphinx-quickstart on Sun Apr 23 14:23:02 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
