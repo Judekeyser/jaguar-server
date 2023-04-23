@@ -30,3 +30,8 @@ pip install requirements.txt
 Using `pyenv` as environment name, makes sure your environment
 stored in the repository, is git-ignored.
 
+Create the Docker image for development process:
+```
+docker build -t jaguar .
+```
+
