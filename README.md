@@ -11,6 +11,10 @@ become possible to gain full control over database connections and persistent
 objects.
 
 - https://www.mit.edu/~yandros/doc/specs/fcgi-spec.html#S1
+- https://linux.die.net/man/2/fork
+- https://linux.die.net/man/2/wait
+- https://man7.org/linux/man-pages/man7/epoll.7.html
+- https://beej.us/guide/bgnet/html//index.html#note-for-translators
 
 ## Licensing
 
@@ -58,3 +62,13 @@ You activate the development environment by running:
 ```
 make devenv
 ```
+
+# Current work and questions
+
+## Process management
+
+- How do we send a signal to the main process, so that it gracefully kills the children on exit?
+
+## Event loop
+
+- Write a prototype for socket connection with an `epoll` event loop.
