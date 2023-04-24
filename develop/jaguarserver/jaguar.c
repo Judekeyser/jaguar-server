@@ -72,6 +72,7 @@ int main()
     }
 
     if(isChild) {
+        // TODO: Use poll and select here
         worker_run();
     }
 
