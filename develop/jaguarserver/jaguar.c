@@ -1,19 +1,30 @@
-#include <iostream>
+#include <stdio.h>
+/* Standard library */
+#include <stdlib.h>
 /* Used for `fork` method */
 #include <unistd.h>
 /* Used for `waitpid` method */
 #include <sys/wait.h>
-/* Used for `prctl` method */
-#include <sys/prctl.h>
 /* Used for signal definitions */
 #include <signal.h>
+/* Always useful to have assertions and booleans */
+#include <assert.h>
+#include <stdbool.h>
 
-#include "worker.hpp"
+#include "worker.h"
+
+
+static void handle_main_program_exit(int signal) {
+    printf("Main program (%d) exit, Caramba (%d)\n", getpid(), signal);
+    exit(0);
+}
 
 
 int main()
 {
-    std::cout << "Jaguar Process Manager started" << std::endl;
+    printf("** Jaguar Process Manager started **\n");
+    signal(SIGTERM, handle_main_program_exit);
+    signal(SIGINT, handle_main_program_exit);
 
     bool isChild = false;
     {
@@ -32,11 +43,9 @@ int main()
                 } else {
                     if(worker_pid == 0) {
                         isChild = true;
-                        /* How to link end of program in parent to end of program for child?
-                            # noZombie
-                        */
                         break;
                     } else {
+                        printf("Parent process spawns child (%d)\n", worker_pid);
                         worker_count += 1;
                     }
                 }
@@ -45,17 +54,17 @@ int main()
                 worker_pid = waitpid(-1, &stop_status, WUNTRACED | WNOHANG);
 
                 if(worker_pid > 0) {
-                    std::cout << "Parent sees worker PID=" << worker_pid << " stop." << std::endl;
+                    printf("Parent sees worker PID=%d stop.\n", worker_pid);
                     // Reset failures, so we're going to try to recover workers that failed to start
                     failures = 0;
                     worker_count -= 1;
 
                     if(WIFSIGNALED(stop_status)) {
                         // Child stop due to a signal
-                        std::cout << "  Apparently someone killed our child: " << WTERMSIG(stop_status) << std::endl;
+                        printf("  Apparently someone killed our child: %d\n", WTERMSIG(stop_status));
                     } else if(WIFSTOPPED(stop_status)) {
                         // Child was stopped by delivering a signal
-                        std::cout << "  Child abended with signal " << WSTOPSIG(stop_status) << std::endl;
+                        printf("  Child abended with signal %d\n", WSTOPSIG(stop_status));
                     }
                 }
             }
@@ -63,8 +72,7 @@ int main()
     }
 
     if(isChild) {
-        Worker worker;
-        worker.run();
+        worker_run();
     }
 
     return 0;
