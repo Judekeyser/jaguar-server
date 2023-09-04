@@ -1,5 +1,6 @@
 FROM ubuntu
 
+EXPOSE 8000
 
 WORKDIR /usr/app
 
