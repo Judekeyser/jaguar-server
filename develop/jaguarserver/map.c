@@ -6,22 +6,31 @@
 enum Color { RED, BLACK };
 
 
+struct ValueListStruct
+{
+    struct ValueListStruct* tail;
+    void* head;
+};
+
+
 struct NodeStruct
 {
     struct NodeStruct* left;
     struct NodeStruct* right;
     struct NodeStruct* parent;
-    void* value;
+    struct ValueListStruct* value_list;
     enum Color color;
 };
 
 
 struct MapStruct
 {
-    struct NodeStruct* data;
+    struct NodeStruct* nodes;
+    struct ValueListStruct* values;
     struct NodeStruct* root;
     int capacity;
-    int size;
+    int nodes_size;
+    int values_size;
     HashFunction hash_function;
 };
 
@@ -29,60 +38,80 @@ static inline enum Color color_of(const struct NodeStruct* node)
     { return node ? (node -> color) : BLACK; }
 
 
+static void swap_values(struct NodeStruct* x, struct NodeStruct* y)
+{
+    struct ValueListStruct* a = x -> value_list;
+    x -> value_list = y -> value_list;
+    y -> value_list = a;
+}
+
+
 static struct NodeStruct* binary_tree_insert_node(Map map, void* value)
 {
     const int map_capacity = map -> capacity;
+    assert(map -> values_size >= map -> nodes_size);
+    assert(map_capacity >= map -> values_size);
+    assert(map -> values_size == 0 || map -> nodes_size > 0);
 
-    if(map -> size == map_capacity) {
+    if(map -> values_size >= map_capacity) {
         return NULL;
     } else {
-        assert(map -> size < map_capacity);
+        struct NodeStruct* new_node = (map -> nodes) + (map -> nodes_size);
+        new_node -> left = NULL;
+        new_node -> right = NULL;
+        new_node -> parent = NULL;
 
-        const int hash = (map -> hash_function)(value);
-        struct NodeStruct* node = (map -> data) + (map -> size);
-        node -> value = value;
-        node -> left = NULL;
-        node -> right = NULL;
-        node -> parent = NULL;
-        map -> size += 1;
+        struct ValueListStruct* new_value_list = (map -> values) + (map -> values_size);
+        new_value_list -> tail = NULL;
+        new_value_list -> head = value;
 
-        if(map -> size == 1) {
-            map -> root = node;
-            assert(node -> left == NULL);
-            assert(node -> right == NULL);
-            assert(node -> parent == NULL);
+        if(map -> nodes_size == 0) {
+            map -> root = new_node;
         } else {
+            const int hash = (map -> hash_function)(value);
+
             struct NodeStruct* cursor = map -> root;
-            int i;
-            for(i = 0; i <= map_capacity && cursor; i++) {
-                const int cursor_hash_code = (map -> hash_function)(cursor -> value);
-                if(cursor_hash_code < hash) {
-                    struct NodeStruct* next_cursor = cursor -> right;
-                    if(next_cursor) {
-                        cursor = next_cursor;
-                    } else {
-                        node -> parent = cursor;
-                        cursor -> right = node;
-                        break;
-                    }
-                } else if(cursor_hash_code > hash) {
-                    struct NodeStruct* next_cursor = cursor -> left;
-                    if(next_cursor) {
-                        cursor = next_cursor;
-                    } else {
-                        node -> parent = cursor;
-                        cursor -> left = node;
-                        break;
-                    }
+            for(;;) {
+                assert(cursor);
+                assert(cursor -> value_list);
+
+                const int cursor_hash = (map -> hash_function)(cursor -> value_list -> head);
+                if(cursor_hash == hash) {
+                    new_node = NULL;
+                    new_value_list -> tail = cursor -> value_list;
+                    cursor -> value_list = new_value_list;
                 } else {
-                    // TODO: Handle collisions
+                    if(cursor_hash < hash) {
+                        struct NodeStruct* next_cursor = cursor -> right;
+                        if(next_cursor) {
+                            cursor = next_cursor;
+                            continue;
+                        } else {
+                            new_node -> parent = cursor;
+                            cursor -> right = new_node;
+                        }
+                    } else if(cursor_hash > hash) {
+                        struct NodeStruct* next_cursor = cursor -> left;
+                        if(next_cursor) {
+                            cursor = next_cursor;
+                            continue;
+                        } else {
+                            new_node -> parent = cursor;
+                            cursor -> left = new_node;
+                        }
+                    }
                 }
+
+                break;
             }
-            assert(i < map_capacity);
         }
-        assert(node -> left == NULL);
-        assert(node -> right == NULL);
-        return node;
+        
+        map -> values_size += 1;
+        if(new_node) {
+            map -> nodes_size += 1;
+            new_node -> value_list = new_value_list;
+        }
+        return new_node;
     }
 }
 
@@ -105,32 +134,41 @@ void map_allocate(
 )
 {
     int size;
-    struct NodeStruct* data;
+    struct NodeStruct* nodes;
+    struct ValueListStruct* values;
     struct MapStruct* map;
 
     map = NULL;
     size = 1 << log2_size;
-    data = malloc(sizeof(*data) * size);
-    if(data) {
-        map = malloc(sizeof(*map));
-        if(map) {
-            map -> size = 0;
-            map -> root = NULL;
-            map -> capacity = size;
-            map -> data = data;
-            map -> hash_function = hash_function;
-        } else {
-            free(data);
-        }
-    }
 
-    *target = map;
+    nodes = malloc(sizeof(*nodes) * size);
+    if(nodes) {
+        values = malloc(sizeof(*values) * size);
+        if(values) {
+            map = malloc(sizeof(*map));
+            if(map) {
+                map -> nodes_size = 0;
+                map -> values_size = 0;
+                map -> root = NULL;
+                map -> capacity = size;
+                map -> nodes = nodes;
+                map -> values = values;
+                map -> hash_function = hash_function;
+
+                *target = map;
+                return;
+            }
+            free(values);
+        }
+        free(nodes);
+    }
 }
 
 void map_dispose(Map map)
 {
     if(map) {
-        free(map -> data);
+        free(map -> nodes);
+        free(map -> values);
         free(map);
     }
 }
@@ -175,11 +213,7 @@ void map_insert(Map map, void* value)
                                     
                                     grand_parent_node -> right = parent_node;
 
-                                    { // Finalize by swapping values
-                                        void* grand_parent_value = grand_parent_node -> value;
-                                        grand_parent_node -> value = parent_node -> value;
-                                        parent_node -> value = grand_parent_value;
-                                    }
+                                    swap_values(grand_parent_node, parent_node);
                                 }
                                 
                                 grand_parent_node -> left = inserted_node;
@@ -199,11 +233,7 @@ void map_insert(Map map, void* value)
                                     if(uncle_node)
                                         uncle_node -> parent = inserted_node;
 
-                                    {
-                                        void* grand_parent_value = grand_parent_node -> value;
-                                        grand_parent_node -> value = inserted_node -> value;
-                                        inserted_node -> value = grand_parent_value;
-                                    }
+                                    swap_values(grand_parent_node, inserted_node);
                                 }
 
                                 grand_parent_node -> right = inserted_node;
@@ -226,11 +256,7 @@ void map_insert(Map map, void* value)
                                     
                                     grand_parent_node -> left = parent_node;
 
-                                    { // Finalize by swapping values
-                                        void* grand_parent_value = grand_parent_node -> value;
-                                        grand_parent_node -> value = parent_node -> value;
-                                        parent_node -> value = grand_parent_value;
-                                    }
+                                    swap_values(grand_parent_node, parent_node);
                                 }
                                 
                                 grand_parent_node -> right = inserted_node;
@@ -250,11 +276,7 @@ void map_insert(Map map, void* value)
                                     if(uncle_node)
                                         uncle_node -> parent = inserted_node;
 
-                                    {
-                                        void* grand_parent_value = grand_parent_node -> value;
-                                        grand_parent_node -> value = inserted_node -> value;
-                                        inserted_node -> value = grand_parent_value;
-                                    }
+                                    swap_values(grand_parent_node, inserted_node);
                                 }
                                 
                                 grand_parent_node -> left = inserted_node;
@@ -294,12 +316,12 @@ void map_insert(Map map, void* value)
 
 void map_debug(const Map map)
 {
-    struct NodeStruct* data = map -> data;
-    const int size = map -> size;
+    struct NodeStruct* nodes = map -> nodes;
+    const int nodes_size = map -> nodes_size;
+    const int values_size = map -> values_size;
     const int capacity = map -> capacity;
 
     int height = 0;
-    /**/
     if(map -> root) {
         int depth = 1;
         struct NodeStruct* cursor = map -> root;
@@ -336,20 +358,28 @@ void map_debug(const Map map)
         }
         stop: ;
     }
-    /**/
     printf(
         "\n** Map object:"
             "\n\tCapacity: %d"
-            "\n\tSize: %d"
+            "\n\tSize (nodes - values): %d - %d"
             "\n\tHeight: %d"
             "\n\tUnbalance factor: %f"
             "\n\tSize of a node structure (in bytes): %d"
             "\n\tNode iteration:"
-        , capacity, size, height, height / log(size), (int) sizeof(struct NodeStruct)
+        , capacity, nodes_size, values_size, height, height / log(nodes_size),
+        (int) sizeof(struct NodeStruct) + (int) sizeof(struct ValueListStruct)
     );
 
-    for(int i = 0; i < size; i++) {
-        const struct NodeStruct node = data[i];
+    for(int i = 0; i < nodes_size; i++) {
+        const struct NodeStruct node = nodes[i];
+
+        int value_count = 0; {
+            struct ValueListStruct* cursor = node.value_list;
+            do {
+                value_count += 1;
+                cursor = cursor -> tail;
+            } while(cursor);
+        }
 
         printf(
             "\n\t\tThis node: %p"
@@ -358,12 +388,14 @@ void map_debug(const Map map)
                 "\n\t\t\tleft node: %p"
                 "\n\t\t\tright node: %p"
                 "\n\t\t\tparent node: %p"
-        , data + i
-        , map -> hash_function(node.value)
+                "\n\t\t\tvalue count: %d"
+        , nodes + i
+        , map -> hash_function((node.value_list) -> head)
         , node.color == BLACK ? "black" : "red"
         , node.left
         , node.right
         , node.parent
+        , value_count
         );
     }
 

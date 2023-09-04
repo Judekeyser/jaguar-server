@@ -21,9 +21,10 @@ int main()
     Map map;
     map_allocate(4, hashCode, &map);
 
-    struct Int values[8] = {
+    struct Int values[9] = {
         {.value = 20},
         {.value = 18},
+        {.value = 27},
         {.value = 27},
         {.value = 22},
         {.value = 25},
@@ -32,7 +33,7 @@ int main()
         {.value = 24}
     };
 
-    for(int i = 0; i < 8; i++) {
+    for(int i = 0; i < 9; i++) {
         map_insert(map, values+i);
     }
     printf("Done insertion");
