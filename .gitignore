@@ -1,4 +1,5 @@
 .idea
 
-**/*.out
-tooling/documentation/build
+**/dist
+jdk-21.0.1.jdk
+**/*.DS_Store
